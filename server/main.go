@@ -11,6 +11,7 @@ func getData(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+    http.Handle("/", http.FileServer(http.Dir("./static")))
     http.HandleFunc("/data", getData)
 
     // Retrieve the server environment variable
@@ -24,8 +25,8 @@ func main() {
         fmt.Println("Running in PROD mode on port 443 with HTTPS...")
         err := http.ListenAndServeTLS(
             ":443",
-            "/etc/letsencrypt/live/api.sheribo.site/fullchain.pem",
-            "/etc/letsencrypt/live/api.sheribo.site/privkey.pem",
+            "/etc/letsencrypt/live/app.sheribo.site/fullchain.pem",
+            "/etc/letsencrypt/live/app.sheribo.site/privkey.pem",
             nil,
         )
         if err != nil {
