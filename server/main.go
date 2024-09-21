@@ -1,48 +1,37 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 )
 
 func getData(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "Hello, Secure World!\n")
+    fmt.Fprintf(w, "Hello world\n")
 }
 
 func main() {
-	// Handler for HTTPS requests
-	http.HandleFunc("/data", getData)
+    http.HandleFunc("/data", getData)
 
-	// Setting up a TLS configuration with supported protocols
-	tlsConfig := &tls.Config{
-		MinVersion: tls.VersionTLS12,
-	}
+    // Retrieve the server environment variable
+    serverEnv := os.Getenv("SERVER_ENV")
 
-	// Starting the HTTPS server
-	server := &http.Server{
-		Addr:      ":443",
-		TLSConfig: tlsConfig,
-	}
-
-	// Redirect HTTP to HTTPS
-	go func() {
-		log.Println("Starting HTTP to HTTPS redirect server on :80")
-		err := http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
-		}))
-		if err != nil {
-			log.Fatalf("HTTP redirect server failed: %v", err)
-		}
-	}()
-
-	log.Println("Starting HTTPS server on :443")
-	err := server.ListenAndServeTLS(
-		"/etc/letsencrypt/live/api.sheribo.site/fullchain.pem",
-		"/etc/letsencrypt/live/api.sheribo.site/privkey.pem",
-	)
-	if err != nil {
-		log.Fatalf("Failed to start HTTPS server: %v", err)
-	}
+    // Run the server based on the environment
+    if serverEnv == "DEV" {
+        fmt.Println("Running in DEV mode on port 8080...")
+        http.ListenAndServe(":8080", nil) // Local development
+    } else if serverEnv == "PROD" {
+        fmt.Println("Running in PROD mode on port 443 with HTTPS...")
+        err := http.ListenAndServeTLS(
+            ":443",
+            "/etc/letsencrypt/live/api.sheribo.site/fullchain.pem",
+            "/etc/letsencrypt/live/api.sheribo.site/privkey.pem",
+            nil,
+        )
+        if err != nil {
+            fmt.Printf("Failed to start HTTPS server: %v\n", err)
+        }
+    } else {
+        fmt.Println("Environment variable SERVER_ENV not set or unrecognized. Exiting...")
+    }
 }
