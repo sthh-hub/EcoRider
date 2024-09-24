@@ -9,3 +9,46 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.23.1'
+
+      - name: Build and Deploy Go application
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your SSH private key to GitHub secrets
+        run: |
+          # Create the SSH key file for server access
+          echo "$SSH_PRIVATE_KEY" > key.pem
+          chmod 600 key.pem
+          
+          # Test SSH connection
+          ssh -v -o StrictHostKeyChecking=no -i key.pem bodhi@64.23.236.169 "echo 'SSH connection successful'"
+
+          # Pull the latest code from GitHub repository on the server
+          ssh -i key.pem bodhi@64.23.236.169 << 'EOF'
+            cd /home/bodhi/EcoRider
+            git pull origin main  # Pull the latest changes from GitHub
+          EOF
+
+          # Build the Go application inside the server directory
+          cd server
+          go mod tidy
+          go build -o app
+
+          # Copy the built application to the server
+          scp -i key.pem server/app bodhi@64.23.236.169:/home/bodhi/EcoRider/app
+
+          # Execute deployment commands on the server
+          ssh -i key.pem bodhi@64.23.236.169 << 'EOF'
+            # Stop the old application process
+            sudo pkill app || true
+
+            # Start the new application and run it in the background
+            nohup /home/bodhi/EcoRider/app &>/dev/null &
+            echo "Deployment completed successfully."
+          EOF
