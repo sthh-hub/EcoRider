@@ -37,15 +37,22 @@ jobs:
 
           # Change to the server directory before building the Go application
           cd server
-          go mod tidy
-          go build -o app
+          ls -la  # List files to ensure you are in the correct directory
+          go mod tidy  # Clean up dependencies
+          go build -o app  # Build the application
+
+          # Check if the app file was created successfully
+          if [ ! -f "app" ]; then
+            echo "Build failed: app file not found."
+            exit 1
+          fi
 
           # Re-create the SSH key file before using scp to ensure it's accessible
           echo "$SSH_PRIVATE_KEY" > key.pem
           chmod 600 key.pem
 
           # Copy the built application to the server
-          scp -i key.pem server/app bodhi@64.23.236.169:/home/bodhi/EcoRider/app
+          scp -i key.pem app bodhi@64.23.236.169:/home/bodhi/EcoRider/app
 
           # Execute deployment commands on the server
           ssh -i key.pem bodhi@64.23.236.169 << 'EOF'
