@@ -22,10 +22,10 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your SSH private key to GitHub secrets
         run: |
-          # Create the SSH key file for server access
+          # Create the SSH key file for server access before each SSH-related command
           echo "$SSH_PRIVATE_KEY" > key.pem
           chmod 600 key.pem
-          
+
           # Test SSH connection
           ssh -v -o StrictHostKeyChecking=no -i key.pem bodhi@64.23.236.169 "echo 'SSH connection successful'"
 
@@ -35,10 +35,14 @@ jobs:
             git pull origin main  # Pull the latest changes from GitHub
           EOF
 
-          # Build the Go application inside the server directory
+          # Change to the server directory before building the Go application
           cd server
           go mod tidy
           go build -o app
+
+          # Re-create the SSH key file before using scp to ensure it's accessible
+          echo "$SSH_PRIVATE_KEY" > key.pem
+          chmod 600 key.pem
 
           # Copy the built application to the server
           scp -i key.pem server/app bodhi@64.23.236.169:/home/bodhi/EcoRider/app
